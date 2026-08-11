@@ -15,5 +15,8 @@ rebuild_nccn_mcp_SPEC.md
 task_plan.md
 notes.md
 implementation_report.md
+# Local handoff records; never version
+*handoff*.md
+*Handoff*.md
 # Virtual environments
 .venv
