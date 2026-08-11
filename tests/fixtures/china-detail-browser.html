@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+  <head><meta name="csrf-token" content="fixture-csrf-token"></head>
+  <body>
+    <div class="pdf_info" data-url="L3Byb3RlY3RlZC9maXh0dXJlLnBkZg==" data-name="fixture-type" data-dname="fixture-display-name"></div>
+    <script>
+      $.post('https://nccnchina.org.cn/guide/download-log', {
+        'gid': 1,
+        'verid': 1151,
+        'pt': $('.pdf_info').data('name'),
+        'vid': 77,
+        '_token': "fixture-csrf-token"
+      }, function(res) {}, 'json');
+    </script>
+  </body>
+</html>

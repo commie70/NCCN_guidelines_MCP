@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "evaluated_at": "2026-08-11T10:00:00+08:00",
+  "commit_base": "dcc65a6392a67ba26eab697c1d87f446dc1cfc21",
+  "secrets_written": false,
+  "live_china_project": {
+    "source": "https://nccnchina.org.cn",
+    "catalog": {
+      "status": "passed",
+      "records": 8,
+      "elapsed_seconds": 0.385,
+      "selected_record": {
+        "record_id": "china:1152:en",
+        "title": "Breast Cancer (English)",
+        "source": "china",
+        "language": "en",
+        "version": "2026.6"
+      }
+    },
+    "license_guard": {
+      "confirm_license_false": {
+        "status": "passed",
+        "network_requests": 0,
+        "download_log_requests": 0
+      },
+      "confirm_license_true": {
+        "status": "blocked",
+        "error_category": "SourceError",
+        "post_js_login_patch": true,
+        "login_request_attempted": true,
+        "download_log_requests": 0,
+        "pdf_download_attempted": false,
+        "pdf_persisted": false,
+        "pdf_sha256": null,
+        "content_search": "not_run",
+        "content_extract": "not_run"
+      },
+      "mobile_identifier_retry": {
+        "status": "blocked",
+        "error_category": "SourceError",
+        "selected_record": {
+          "record_id": "china:1158:en",
+          "title": "Non-Small Cell Lung Cancer (English)",
+          "source": "china",
+          "language": "en",
+          "version": "2026.7"
+        },
+        "catalog_records": 8,
+        "catalog_elapsed_seconds": 0.295,
+        "download_elapsed_seconds": 0.687,
+        "login_request_attempted": true,
+        "download_log_requests": 0,
+        "pdf_download_attempted": false,
+        "pdf_persisted": false,
+        "pdf_sha256": null,
+        "content_index": "not_run",
+        "bounded_search": "not_run"
+      },
+      "final_isolated_login_validation": {
+        "at": "2026-08-11T12:15:35+08:00",
+        "record_id": "china:1158:en",
+        "confirmation_requested": true,
+        "authenticated": false,
+        "login_endpoint_reached": true,
+        "download_log_requests": 0,
+        "pdf_requests": 0,
+        "error_category": "SourceError"
+      }
+    }
+  },
+  "china_login_contract": {
+    "observed_without_credentials": true,
+    "page_form_count": 0,
+    "endpoint": "/user/login-do",
+    "method": "POST",
+    "encoding": "application/x-www-form-urlencoded",
+    "csrf": "_token field plus X-CSRF-TOKEN header",
+    "password_mode_fields": ["login_type", "_token", "mobile", "password", "is_agree"],
+    "otp_mode_fields": ["login_type", "_token", "mobile", "mobile_code", "check_type", "is_agree"],
+    "captcha_ui_present": true,
+    "password_mode_sends_captcha": false,
+    "response_contract": {"success": "boolean", "msg": "string"}
+  },
+  "three_question_e2e": {
+    "requested_model": "gpt-5.6-terra",
+    "requested_reasoning_effort": "high",
+    "web_search": "disabled",
+    "status": "not_applicable",
+    "reason": "No authenticated China PDF could be downloaded, so there is no fixed PDF SHA-256 or page-addressable evidence for an honest E2E answer.",
+    "questions": [
+      {"question": "What are the available first-line immunotherapy options for ES-SCLC?", "status": "not_run", "peak_context_tokens": null, "compaction": null},
+      {"question": "What is the initial chemotherapy for triple-negative breast cancer?", "status": "not_run", "peak_context_tokens": null, "compaction": null},
+      {"question": "What are the immunotherapy options for neuroendocrine tumors?", "status": "not_run", "peak_context_tokens": null, "compaction": null}
+    ],
+    "codex_probe": {
+      "cli": "codex-cli 0.147.0",
+      "isolated_session_started": true,
+      "mcp_tool": "search_guidelines",
+      "result": "cancelled before MCP result; excluded from performance scoring",
+      "peak_context_tokens": null,
+      "compaction": false
+    }
+  },
+  "overall": "blocked"
+}

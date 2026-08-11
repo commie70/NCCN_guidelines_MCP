@@ -1,4 +1,5 @@
 # Python-generated files
+.DS_Store
 __pycache__/
 *.py[oc]
 build/
@@ -6,9 +7,13 @@ dist/
 wheels/
 *.egg-info
 nccn_guidelines_index.yaml
-downloads/*
+downloads/
 tmp.md
-logs/*
+logs/
 pdf_processing/
+rebuild_nccn_mcp_SPEC.md
+task_plan.md
+notes.md
+implementation_report.md
 # Virtual environments
 .venv

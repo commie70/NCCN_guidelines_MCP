@@ -1,0 +1,7 @@
+{
+  "nccn-guidelines": {
+    "command": "uv",
+    "args": ["run", "nccn-guidelines-mcp"],
+    "cwd": "${PLUGIN_ROOT}"
+  }
+}

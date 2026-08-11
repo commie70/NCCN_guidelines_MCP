@@ -1,0 +1,21 @@
+{
+  "name": "nccn-guidelines",
+  "interface": {
+    "displayName": "NCCN Guidelines"
+  },
+  "plugins": [
+    {
+      "name": "nccn-guidelines",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/commie70/NCCN_guidelines_MCP",
+        "ref": "main"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Research"
+    }
+  ]
+}
