@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "prompt": "What are the available first-line immunotherapy options for ES-SCLC?",
+    "expected": "Use the skill workflow: search_guidelines first, preserve the returned record_id, download only the selected record when permitted, search_content before extract_content, and answer with guideline title, source, version, PDF page, detail URL, and a clear note when the authenticated source or evidence is unavailable. Do not provide medical advice or invent treatment evidence."
+  },
+  {
+    "id": 2,
+    "prompt": "What is the initial chemotherapy for triple-negative breast cancer?",
+    "expected": "Use a bounded NCCN evidence workflow rather than a general medical answer: identify the exact language/source/version, search for candidate evidence, expand only relevant chunks or pages, cite page-level support, distinguish English and Chinese versions, and stop with a surfaced authentication/license error instead of silently switching sites."
+  },
+  {
+    "id": 3,
+    "prompt": "What are the immunotherapy options for neuroendocrine tumors?",
+    "expected": "Return a concise evidence answer grounded in a specific NCCN record and page-addressable snippets. Keep record_id opaque, avoid whole-PDF extraction, state source/version differences, and explicitly report if no validated indexed PDF is available."
+  }
+]

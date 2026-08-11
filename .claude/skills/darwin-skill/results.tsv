@@ -1,0 +1,5 @@
+timestamp	commit	skill	old_score	new_score	status	dimension	note	eval_mode
+2026-08-11T14:15	2b2043d	nccn-guidelines	-	55.1	baseline	-	"runtime_warn=0; dim1-7,9 static rubric; three confirmed prompts; independent judges timed out; no authenticated indexed PDF; 100% dry_run"	dry_run
+2026-08-11T14:21	3bc6a86	nccn-guidelines	55.1	2-1 better	keep	dim3	"paired N=3: explicit no-record, auth/network/license/non-PDF/OCR/search/pairing failure branches; one judge flagged blanket no-retry conservatism"	paired
+2026-08-11T14:32	02a391f	nccn-guidelines	2-1 better	3-0 better	keep	dim4	"paired N=3: explicit visual China consent checkpoint; 1493 bytes; no material regression"	paired
+2026-08-11T14:35	4dafdbc	nccn-guidelines	3-0 better	3-0 better	keep	dim9	"paired N=3: concise blacklist for invented IDs/URLs, silent source switches, whole-PDF extraction, and medical advice; 1592 bytes"	paired
