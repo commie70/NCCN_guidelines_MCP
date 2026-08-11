@@ -13,5 +13,15 @@
     "id": 3,
     "prompt": "What are the immunotherapy options for neuroendocrine tumors?",
     "expected": "Return a concise evidence answer grounded in a specific NCCN record and page-addressable snippets. Keep record_id opaque, avoid whole-PDF extraction, state source/version differences, and explicitly report if no validated indexed PDF is available."
+  },
+  {
+    "id": 4,
+    "prompt": "下载最新的前列腺癌NCCN诊疗指南中文版",
+    "expected": "Search the China catalog with a Chinese query (前列腺癌), since record titles there are Chinese. If no zh-language record exists for the cancer, say so explicitly and offer the available language versions (e.g. 英文版) with exact title/version; never silently substitute another language or another site. Show the 🔴 consent checkpoint with exact title, source, language, and version before any single download_guideline call with confirm_license=true."
+  },
+  {
+    "id": 5,
+    "prompt": "Get me the prostate cancer NCCN guideline PDF",
+    "expected": "When search_guidelines returns multiple candidates for one cancer (e.g. Prostate Cancer vs Prostate Cancer Early Detection vs Genetic/Familial High-Risk Assessment), select the exact title match or present the candidates to the user; never blindly download the first hit. Preserve the chosen record's opaque record_id."
   }
 ]

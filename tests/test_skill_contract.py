@@ -31,9 +31,9 @@ class SkillContractTests(unittest.TestCase):
         )
         self.assertIsNone(runtime_drift.search(text))
 
-    def test_confirmed_prompts_are_three_bounded_cases(self) -> None:
+    def test_confirmed_prompts_are_bounded_cases(self) -> None:
         prompts = json.loads(PROMPTS.read_text())
-        self.assertEqual([item["id"] for item in prompts], [1, 2, 3])
+        self.assertEqual([item["id"] for item in prompts], [1, 2, 3, 4, 5])
         self.assertTrue(all(item["prompt"] and item["expected"] for item in prompts))
 
 
