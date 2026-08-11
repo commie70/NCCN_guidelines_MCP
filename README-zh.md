@@ -168,20 +168,20 @@ Python MCP 才会把 PDF 入库、建索引、供 `search_content` 检索。若�
 | --- | --- | ---: | --- | --- |
 | 直接 NCCN China 浏览器 | 成功，302 页 PDF | 同意授权到文件完成：2.5–3.0 s | 4 次 UI；4 个必要网络步骤；0 重试 | 未测（只作下载基线） |
 | Kimi Computer Use 控制浏览器 | 成功，拿到相同 PDF | 新标签到文件完成：22.5 s | 5 次 UI；4 次观察快照 | 未测（只作下载基线） |
-| 本 plugin 实测 China | 初次选中 `china:1152:en`（乳腺癌）；手机号重试选中基线同一条 `china:1158:en`（非小细胞肺癌），两次均在登录处受阻 | 手机号重试：目录 0.295 s；选中记录操作 0.687 s；无 PDF | `confirm_license=false`：0 HTTP。每次确认后均到达详情、登录和一次登录 POST；`download-log`/PDF 都是 0 | 未跑：没有成功入库的 PDF |
+| 本 plugin Python 实测（2026-08-11/12） | 通过 Codex MCP 客户端下载并索引了 China（中/英文）与 Global 记录 | 目录约 0.3 s；每条确认记录数秒 | `confirm_license=false`：0 HTTP；每条确认记录恰好一次 `download-log` | 通过：ES-SCLC 一线免疫方案作答并引用标题、版本与 PDF 页码（SCL-E 1 of 6，p.21） |
 
-成功基线复用了已授权的浏览器会话。手机号重试虽选到同一条记录，却在传输前受阻；因此仍不能做严格耗时对比，也不能证明 plugin 的认证或三题效果。China 当前密码登录用 `mobile` 标识符；初始邮箱形式标识和后续手机号标识在新的项目会话中都没有认证成功。plugin 已适配当前表单/XHR 协议并有测试，但要完成真实三题 E2E，需要 China 站当前接受的登录凭据。不会导入浏览器 Cookie，也不会绕过此门槛。
+Python 链路现已按当前契约双站端到端验证：Global 目录与 PDF 下载（如非小细胞肺癌，3,818,554 bytes，索引为 1541 个 chunk），以及 China 密码登录（`mobile` 标识符）后的逐条授权下载，包括中文版记录 `china:1026:zh`（宫颈癌-中国版，2025.4）。China 配额为每账号每日 10 篇，每日 00:00（CST）重置；配额被拒会被归类为独立的「download quota was reached」错误。不会导入浏览器 Cookie，也不会绕过此门槛。
 
-原始观察：[`baseline_direct.md`](tests/evals/baseline_direct.md)、[`baseline_kimi_cu.md`](tests/evals/baseline_kimi_cu.md)，以及受阻项目运行产物 `tests/evals/project_live_e2e.md` / `tests/evals/results.json`。
+原始观察：[`baseline_direct.md`](tests/evals/baseline_direct.md)、[`baseline_kimi_cu.md`](tests/evals/baseline_kimi_cu.md)，以及 `tests/evals/project_live_e2e.md` / `tests/evals/results.json`。
 
 ### 兼容性跟进
 
-Kimi Computer Use 在隔离标签页复现了 China 的真实浏览器契约：选中详情记录，打开英文下载，勾选页面展示的 EULA，再确认。浏览器先发一次 `download-log`，才构造 PDF 请求。Python 适配器现会在内存中解析这套详情契约（不保存 token 或下载 URL），同时保留旧表单兼容路径。改动后的真实公开目录刷新得到 91 条 Global 当前 `guidelines-detail` 链接和 8 条 China 记录；18 个 fixture/MCP 测试覆盖两套当前契约。Python 进程仍需站点接受的凭据，或用户显式提供的会话 Cookie；不会自动拿 Chrome 已授权会话。
+Kimi Computer Use 在隔离标签页复现了 China 的真实浏览器契约：选中详情记录，打开下载，勾选页面展示的 EULA，再确认。浏览器先发一次 `download-log`，才构造 PDF 请求。Python 适配器在内存中解析这套详情契约（不保存 token 或下载 URL），同时保留旧表单兼容路径；详情页提供的 PDF 语言与所选记录不一致时会直接拦截下载。2026-08-11 的真实刷新得到 91 条 Global 记录与 98 条 China 记录，其中 95 条 China 记录与 Global `guideline_key` 配对（`pairing_status=verified`）。31 个 fixture/MCP 测试覆盖两套当前契约、配对映射表与配额/语言防线。
 
 ## 注意
 
 - NCCN 内容有许可。用户需要有账号并接受站点条款。China 每条下载都要单独确认。
-- China 有配额和访问限制。不会批量试探，不会重试 `download-log`，不会把旧中文译本说成新版英文的同版翻译。
+- China 有配额和访问限制：每账号每日 10 篇，每日 00:00（CST）重置；配额被拒会报独立的「quota was reached」错误。不会批量试探，不会重试 `download-log`，不会把旧中文译本说成新版英文的同版翻译。
 - China 同时支持旧表单和当前浏览器下载契约：详情页提供本条 `download-log` 字段，只有该调用成功后才构造即时 PDF 请求。Global 目录同时兼容旧卡片和当前 `guidelines-detail` 链接。
 - 凭据不要出现在对话、日志、截图、Issue、仓库。泄露过就轮换。
 - 这是证据检索，不是医疗建议。临床决策请遵循专业判断和本地规范。

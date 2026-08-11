@@ -191,40 +191,38 @@ successful browser runs produced the same 5,804,744-byte PDF with SHA-256
 | --- | --- | ---: | --- | --- |
 | Direct official NCCN China browser | Downloaded one validated 302-page PDF | 2.5–3.0 s from license confirmation to completed file | 4 UI actions; 4 necessary network steps; 0 retries | Not measured (acquisition control) |
 | Kimi Computer Use browser control | Downloaded the identical validated PDF | 22.5 s from fresh tab to completed file | 5 UI actions; 4 observation snapshots | Not measured (acquisition control) |
-| This plugin, live China run | Initial run selected `china:1152:en` (Breast Cancer); the mobile-identifier retry selected the control record `china:1158:en` (NSCLC) but both were blocked at China login | Mobile retry: catalog 0.295 s; selected-record attempt 0.687 s; no PDF transfer | `confirm_license=false` made 0 HTTP requests. Each confirmed run reached detail, login, and one login POST; it made 0 `download-log`/PDF requests | Not run: all three questions require a successfully indexed PDF |
+| This plugin, Python live runs (2026-08-11/12) | Downloaded and indexed both China (EN and ZH) and Global records through a Codex MCP client | Catalog ~0.3 s; seconds per confirmed record | `confirm_license=false` made 0 HTTP requests; exactly one `download-log` per confirmed record | Passed: ES-SCLC first-line immunotherapy regimens answered with title, version, and PDF page citations (SCL-E 1 of 6, p.21) |
 
-The successful browser controls used an already authorized China browser
-session. The mobile-identifier retry used the same record but was blocked before
-transfer, so these are still not directly comparable performance measurements,
-nor an authentication or end-to-end quality claim for the plugin. The current
-China login page submits a password-mode XHR with a `mobile` identifier; neither
-the initial email-style identifier nor the later mobile identifier authenticated
-in a fresh project session. The plugin now supports that current form/XHR
-protocol and tests it, but a successful real plugin E2E requires China
-credentials accepted by the site's current login flow. The project must not
-import browser cookies or bypass this gate.
+The Python path is now verified end to end on both sites with the current
+contracts: Global catalog and PDF download (e.g. Non-Small Cell Lung Cancer,
+3,818,554 bytes, indexed into 1541 chunks), and China password-mode login with
+a `mobile` identifier followed by consented downloads, including the
+Chinese-language record `china:1026:zh` (宫颈癌-中国版, version 2025.4). China
+enforces a quota of 10 downloads per account per day, resetting at 00:00 CST;
+quota rejections are classified into a distinct `download quota was reached`
+error. The project must not import browser cookies or bypass this gate.
 
 Reproducible raw observations: [`baseline_direct.md`](tests/evals/baseline_direct.md),
-[`baseline_kimi_cu.md`](tests/evals/baseline_kimi_cu.md), and (when the run is
-blocked) `tests/evals/project_live_e2e.md` / `tests/evals/results.json`.
+[`baseline_kimi_cu.md`](tests/evals/baseline_kimi_cu.md), and
+`tests/evals/project_live_e2e.md` / `tests/evals/results.json`.
 
 ### Compatibility follow-up
 
 Kimi Computer Use reproduced the China browser contract in an isolated tab:
-select the exact detail record, open its English download, accept the displayed
+select the exact detail record, open its download, accept the displayed
 EULA, and confirm. That performs one `download-log` request before the browser
-constructs the PDF request. The Python adapter now parses that in-memory detail
+constructs the PDF request. The Python adapter parses that in-memory detail
 contract (without storing its token or URL), while retaining the older form
-contract as a fallback. A live public refresh after this change found 91 Global
-records through current `guidelines-detail` links and 8 China records. The 18
-fixture/MCP tests cover both current contracts. The Python process still needs
-either accepted site credentials or an explicitly supplied session cookie; it
-does not take Chrome's authorized session automatically.
+contract as a fallback, and blocks a download when the offered PDF language
+differs from the selected record. A live refresh on 2026-08-11 found 91 Global
+records and 98 China records; 95 of the China records pair to Global
+`guideline_key` values (`pairing_status=verified`). The 31 fixture/MCP tests
+cover both current contracts, the pairing map, and the quota/language guards.
 
 ## ⚠️ License, safety, and troubleshooting
 
 - NCCN content is licensed. The user must have the required account and accept the applicable terms. For NCCN China, state the exact title, language, version, and source, then obtain permission before the one-record download call.
-- China currently enforces its own quota and access controls. The plugin never bulk-probes, retries `download-log`, or treats an old Chinese translation as the current English version.
+- China currently enforces its own quota and access controls: 10 downloads per account per day, resetting at 00:00 CST; quota rejections surface as a distinct `download quota was reached` error. The plugin never bulk-probes, retries `download-log`, or treats an old Chinese translation as the current English version.
 - China supports both its historic form contract and its current browser contract: the selected detail page supplies the one-record `download-log` fields, and the plugin constructs the immediate PDF request only after that log call succeeds. Global catalog discovery supports both legacy cards and current `guidelines-detail` links.
 - Do not put credentials in prompts, tool calls, logs, issues, screenshots, or repository files. Rotate any credential that was accidentally exposed.
 - This plugin retrieves guideline evidence; it is not medical advice. Apply professional judgment and local policy.
