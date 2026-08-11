@@ -436,7 +436,7 @@ class ChinaSource:
                     # Surface the quota category when the site declares it; the message
                     # itself stays out of the error so no unexpected text leaks through.
                     message = str(payload.get("msg") or "")
-                    if re.search(r"次数|上限|限制|quota|limit", message, re.I):
+                    if re.search(r"次数|上限|限额|额度|超出|限制|quota|limit", message, re.I):
                         raise SourceError("NCCN China download quota was reached for this account")
                     raise SourceError("NCCN China download authorization was rejected")
                 if isinstance(payload, dict):

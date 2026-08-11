@@ -290,6 +290,28 @@ class SourceTests(unittest.TestCase):
 
         asyncio.run(run())
 
+    def test_china_download_log_quota_wording_variants_are_classified(self) -> None:
+        # Live wording observed 2026-08-11: {"success":false,"msg":"已超出今日最高限额10篇"}
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/guide/detail/1151":
+                return httpx.Response(200, text=(FIXTURES / "china-detail.html").read_text())
+            if request.url.path == "/guide/download-log":
+                return httpx.Response(200, json={"success": False, "msg": "已超出今日最高限额10篇"})
+            return httpx.Response(404)
+
+        source = ChinaSource(Credentials(None, None, "NCCN_CHINA_USERNAME", "NCCN_CHINA_PASSWORD"), lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+        record = GuidelineRecord(
+            record_id="china:1151:en", source="china", guideline_key="prostate-cancer", version_id="1151",
+            title_en="Prostate Cancer", language="en", version="2026.6", detail_url="https://nccnchina.org.cn/guide/detail/1151",
+        )
+
+        async def run() -> None:
+            with self.assertRaises(SourceError) as caught:
+                await source.download(record, Path(tempfile.mkdtemp()), confirm_license=True)
+            self.assertIn("quota", str(caught.exception))
+
+        asyncio.run(run())
+
     def test_china_js_login_posts_declared_password_contract(self) -> None:
         state = {"logged_in": False, "download_log": 0}
         captured: dict[str, object] = {}

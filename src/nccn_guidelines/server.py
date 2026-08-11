@@ -167,7 +167,7 @@ async def extract_content(
     max_chars: int = 24_000,
     cursor: str | None = None,
 ) -> dict[str, object]:
-    """Expand at most 12 chunks or 8 pages. A selector is required; whole PDFs are disabled."""
+    """Expand at most 120 chunks or 80 pages (max_chars up to 250000). A selector is required; whole PDFs are disabled."""
     try:
         return service.content.extract(record_id, chunk_ids, pages, max_chars, cursor)
     except ContentError as error:

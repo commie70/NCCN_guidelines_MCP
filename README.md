@@ -24,7 +24,7 @@ Bounded NCCN Global and NCCN China guideline retrieval for MCP agents. It return
 - Stable records. No MCP tool accepts an arbitrary URL, path, username, or password.
 - Per-record China license confirmation. A rejected/omitted confirmation makes zero `download-log` requests.
 - Site/language/version-separated files, atomic writes, SHA-256 manifests, and local SQLite catalog/content stores.
-- Bounded retrieval: catalog results ≤20; snippets ≤1,200 chars each and ≤18,000 chars total; extraction requires selectors and is limited to 12 chunks or 8 pages.
+- Bounded retrieval: catalog results ≤20; snippets ≤1,200 chars each and ≤45,000 chars total; extraction requires selectors and is limited to 120 chunks or 80 pages, up to 250,000 chars per call.
 - SQLite FTS5 uses `trigram` when available, then `unicode61`, then a bounded deterministic fallback. No vector database or background indexer.
 
 ## 🛠️ Installation

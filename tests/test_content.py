@@ -24,7 +24,7 @@ class ContentTests(unittest.TestCase):
     def test_search_and_extract_are_bounded(self) -> None:
         found = self.store.search(self.record.record_id, "immunotherapy", top_k=12, include_neighbors=1)
         self.assertTrue(found["snippets"])
-        self.assertLessEqual(sum(len(item["text"]) for item in found["snippets"]), 18_000)
+        self.assertLessEqual(sum(len(item["text"]) for item in found["snippets"]), 45_000)
         self.assertTrue(all(len(item["text"]) <= 1200 for item in found["snippets"]))
         extracted = self.store.extract(self.record.record_id, pages=[1], max_chars=1000)
         self.assertLessEqual(sum(len(item["text"]) for item in extracted["chunks"]), 1000)
@@ -37,10 +37,19 @@ class ContentTests(unittest.TestCase):
         found = self.store.search(self.record.record_id, "first-line immunotherapy extensive-stage", top_k=3)
         self.assertTrue(found["snippets"])
 
+    def test_snippet_is_centered_on_the_match(self) -> None:
+        # A matched term beyond the 1200-char head of a chunk must still be visible.
+        # Space-free padding keeps the whole page in one chunk with the term at ~1400.
+        page = "x" * 1400 + "atezolizumab plus etoposide"
+        self.store.ingest_text_pages(self.record, [page], sha256="fixture-sha-2")
+        found = self.store.search(self.record.record_id, "atezolizumab", top_k=3, include_neighbors=0)
+        self.assertTrue(found["snippets"])
+        self.assertTrue(any("atezolizumab" in item["text"] for item in found["snippets"]))
+
     def test_whole_document_and_over_limit_extracts_fail(self) -> None:
         with self.assertRaises(ContentError):
             self.store.extract(self.record.record_id)
         with self.assertRaises(ContentError):
-            self.store.extract(self.record.record_id, pages=list(range(1, 10)))
+            self.store.extract(self.record.record_id, pages=list(range(1, 82)))
         with self.assertRaises(ContentError):
-            self.store.extract(self.record.record_id, pages=[1], max_chars=50_001)
+            self.store.extract(self.record.record_id, pages=[1], max_chars=250_001)

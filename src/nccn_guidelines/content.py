@@ -137,8 +137,15 @@ class ContentStore:
         return row
 
     @staticmethod
-    def _snippet(text: str) -> str:
-        return text[:1200]
+    def _snippet(text: str, terms: list[str]) -> str:
+        if len(text) <= 1200:
+            return text
+        # Center the window on the first matched term so the evidence is visible
+        # instead of sliced off by a head-only truncation.
+        folded = text.casefold()
+        positions = [position for term in terms if (position := folded.find(term)) >= 0]
+        start = max(0, min(min(positions) - 200, len(text) - 1200)) if positions else 0
+        return text[start : start + 1200]
 
     def search(self, record_id: str, query: str, top_k: int = 6, include_neighbors: int = 1) -> dict[str, object]:
         if not query.strip():
@@ -148,6 +155,7 @@ class ContentStore:
         if not 0 <= int(include_neighbors) <= 2:
             raise ContentError("include_neighbors must be between 0 and 2")
         document = self._document(record_id)
+        terms = [term for term in re.findall(r"[\w一-鿿-]+", query.casefold()) if len(term) > 1]
         with self._connect() as db:
             rows: list[sqlite3.Row] = []
             safe_query = " ".join(re.findall(r"[\w\u4e00-\u9fff-]+", query))
@@ -165,7 +173,6 @@ class ContentStore:
             if not rows:
                 # Long natural-language queries rarely match as one string; degrade to
                 # any-term substring matching so agents still get candidate chunks.
-                terms = [term for term in re.findall(r"[\w一-鿿-]+", query.casefold()) if len(term) > 1]
                 rows = [
                     row
                     for row in db.execute("SELECT * FROM chunks WHERE record_id = ? ORDER BY pdf_page, ordinal", (record_id,)).fetchall()
@@ -183,9 +190,9 @@ class ContentStore:
                     ):
                         selected.setdefault(neighbor["chunk_id"], neighbor)
         snippets = []
-        remaining = 18_000
+        remaining = 45_000
         for row in sorted(selected.values(), key=lambda item: (item["pdf_page"], item["ordinal"])):
-            text = self._snippet(row["text"])
+            text = self._snippet(row["text"], terms)
             if len(text) > remaining:
                 break
             snippets.append({"chunk_id": row["chunk_id"], "pdf_page": row["pdf_page"], "text": text})
@@ -204,12 +211,12 @@ class ContentStore:
     def extract(self, record_id: str, chunk_ids: list[str] | None = None, pages: list[int] | None = None, max_chars: int = 24_000, cursor: str | None = None) -> dict[str, object]:
         if not chunk_ids and not pages:
             raise ContentError("provide chunk_ids or pages; whole-document extraction is disabled")
-        if max_chars < 1 or max_chars > 50_000:
-            raise ContentError("max_chars must be between 1 and 50000")
-        if chunk_ids and len(chunk_ids) > 12:
-            raise ContentError("at most 12 chunk_ids may be requested")
-        if pages and len(pages) > 8:
-            raise ContentError("at most 8 pages may be requested")
+        if max_chars < 1 or max_chars > 250_000:
+            raise ContentError("max_chars must be between 1 and 250000")
+        if chunk_ids and len(chunk_ids) > 120:
+            raise ContentError("at most 120 chunk_ids may be requested")
+        if pages and len(pages) > 80:
+            raise ContentError("at most 80 pages may be requested")
         document = self._document(record_id)
         with self._connect() as db:
             if chunk_ids:
