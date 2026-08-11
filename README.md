@@ -129,6 +129,14 @@ For a site that only works in an already authorized browser session, each source
 
 An explicit `source` overrides this table. `source=global` with `language=zh` or `paired` is an error. A network, password, quota, or site error never silently switches sources.
 
+### Chinese/English record alignment limits
+
+China catalog records are paired to the NCCN Global `guideline_key` through an explicit, verified title map. As of 2026-08-11, 95 of 98 live China records pair with `pairing_status=verified`. The remaining cases are deliberate, not bugs:
+
+- **Dual-tagged `-中国版` cards are not split.** The 宫颈癌/子宫肿瘤/卵巢癌 China-edition cards show both `中文版` and `英文版` tags, but each detail page offers only the Chinese PDF. Their English versions are separate catalog records (e.g. `china:989:en`). The plugin keeps one record per card instead of inventing English records that would always fail at download.
+- **Three ambiguous titles stay unpaired** (`china-guide-{id}`, `pairing_status=unverified`): `免疫治疗相关毒性的管理` (overlaps the immune-checkpoint-toxicity title), `肝胆癌`, and `原发性皮肤淋巴瘤`. They are searchable and downloadable by `record_id`; they just do not merge with a Global key.
+- **Language mismatch is blocked, not downloaded.** If a detail page offers a PDF whose language differs from the selected record, the download stops with a `SourceError` before any `download-log` request, so a wrong-language file is never persisted.
+
 ### Browser fallback when the Python `httpx` path is blocked
 
 The Python MCP path is the only path that persists, indexes, and searches a

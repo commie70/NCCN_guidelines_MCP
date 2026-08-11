@@ -113,6 +113,14 @@ China 当前密码登录页把账号字段叫作 `mobile`。`NCCN_CHINA_USERNAME
 
 手动 `source` 覆盖自动选择。`source=global` + `zh`/`paired` 会报参数错误。密码错误、配额、网络错误时不会偷偷换站。
 
+### 中英文记录对齐的边界
+
+China 目录通过一张显式核对过的标题映射表对齐到 NCCN Global 的 `guideline_key`。截至 2026-08-11，线上 98 条 China 记录中 95 条 `pairing_status=verified`。其余情况是刻意保留，不是缺陷：
+
+- **双标签「-中国版」卡片不拆。** 宫颈癌/子宫肿瘤/卵巢癌中国版卡片同时挂「中文版」「英文版」两个标签，但详情页只提供中文版 PDF 下载；它们的英文版本是独立目录记录（如 `china:989:en`）。plugin 一张卡片只留一条记录，不会编造下载必失败的幻影英文记录。
+- **3 个歧义标题保持未配对**（`china-guide-{id}`，`pairing_status=unverified`）：`免疫治疗相关毒性的管理`（与免疫检查点毒性条目疑似新旧名）、`肝胆癌`、`原发性皮肤淋巴瘤`。它们仍可凭 `record_id` 正常搜索与下载，只是不并入 Global key。
+- **语言不匹配直接拦截。** 详情页提供的 PDF 语言与所选记录不一致时，下载在任何 `download-log` 请求之前以 `SourceError` 终止，不会落盘错误语言的文件。
+
 ### Python `httpx` 链路不通时：浏览器备选
 
 Python MCP 才会把 PDF 入库、建索引、供 `search_content` 检索。若站点拒绝它的登录/会话，浏览器只作为“下载一份已许可 PDF”的备选；它不是 Cookie 桥，浏览器下载的文件也不会自动进入 `search_content`。
