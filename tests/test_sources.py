@@ -126,6 +126,95 @@ class SourceTests(unittest.TestCase):
         self.assertEqual(ovarian.title, "卵巢癌-中国版")
         self.assertEqual(ovarian.version, "2025.3")
 
+    def test_china_catalog_keys_align_with_global(self) -> None:
+        records = {record.record_id: record for record in ChinaSource.parse_catalog_page((FIXTURES / "china-catalog-live.html").read_text())}
+        nsclc = records["china:1158:en"]
+        self.assertEqual(nsclc.guideline_key, "non-small-cell-lung-cancer")
+        self.assertEqual(nsclc.pairing_status, "verified")
+        ovarian = records["china:1027:zh"]
+        self.assertEqual(ovarian.guideline_key, "ovarian-cancer-fallopian-tube-cancer-primary-peritoneal-cancer")
+        self.assertEqual(ovarian.pairing_status, "verified")
+
+    def test_china_catalog_alias_lookup_is_casefolded_and_cjk_titles_never_fragment_slug(self) -> None:
+        html = """
+        <div class="cardData-li" onclick="guide_detail(1118)">
+         <div class="cardData-li-title"><div><span>B细胞淋巴瘤</span></div></div>
+         <div class="li-tags fl">英文版</div><div class="li-tags fr">版本 2026.3</div>
+        </div>
+        <div class="cardData-li" onclick="guide_detail(1109)">
+         <div class="cardData-li-title"><div><span>Castleman病</span></div></div>
+         <div class="li-tags fl">英文版</div><div class="li-tags fr">版本 2025.1</div>
+        </div>
+        <div class="cardData-li" onclick="guide_detail(781)">
+         <div class="cardData-li-title"><div><span>肝胆癌</span></div></div>
+         <div class="li-tags fl">英文版</div><div class="li-tags fr">版本 2024.2</div>
+        </div>
+        """
+        records = {record.record_id: record for record in ChinaSource.parse_catalog_page(html)}
+        self.assertEqual(records["china:1118:en"].guideline_key, "b-cell-lymphomas")
+        self.assertEqual(records["china:1118:en"].pairing_status, "verified")
+        self.assertEqual(records["china:1109:en"].guideline_key, "castleman-disease")
+        self.assertEqual(records["china:781:en"].guideline_key, "china-guide-781")
+        self.assertEqual(records["china:781:en"].pairing_status, "unverified")
+
+    def test_china_download_language_mismatch_blocks_download_log(self) -> None:
+        calls = {"download_log": 0}
+        detail_html = (FIXTURES / "china-detail-browser.html").read_text().replace("fixture-type", "中文版")
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/guide/detail/1151":
+                return httpx.Response(200, text=detail_html)
+            if request.url.path == "/guide/download-log":
+                calls["download_log"] += 1
+                return httpx.Response(200, json={"success": True})
+            return httpx.Response(404)
+
+        source = ChinaSource(
+            Credentials(None, None, "NCCN_CHINA_USERNAME", "NCCN_CHINA_PASSWORD"),
+            lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler), follow_redirects=True),
+            session_cookie="fixture-session",
+        )
+        record = GuidelineRecord(
+            record_id="china:1151:en", source="china", guideline_key="prostate-cancer", version_id="1151",
+            title_en="Prostate Cancer", language="en", version="2026.6", detail_url="https://nccnchina.org.cn/guide/detail/1151",
+        )
+
+        async def run() -> None:
+            with self.assertRaises(SourceError) as error:
+                await source.download(record, Path(tempfile.mkdtemp()), confirm_license=True)
+            self.assertIn("language", str(error.exception))
+
+        asyncio.run(run())
+        self.assertEqual(calls["download_log"], 0)
+
+    def test_china_download_language_match_passes(self) -> None:
+        detail_html = (FIXTURES / "china-detail-browser.html").read_text().replace("fixture-type", "中文版")
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/guide/detail/1151":
+                return httpx.Response(200, text=detail_html)
+            if request.url.path == "/guide/download-log":
+                return httpx.Response(200, json={"success": True})
+            if request.url.path == "/guide/download":
+                return httpx.Response(200, content=b"%PDF-1.7\nfixture", headers={"content-type": "application/pdf"})
+            return httpx.Response(404)
+
+        source = ChinaSource(
+            Credentials(None, None, "NCCN_CHINA_USERNAME", "NCCN_CHINA_PASSWORD"),
+            lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler), follow_redirects=True),
+            session_cookie="fixture-session",
+        )
+        record = GuidelineRecord(
+            record_id="china:1102:zh", source="china", guideline_key="prostate-cancer", version_id="1151",
+            title_en="Prostate Cancer", language="zh", title_zh="前列腺癌", version="2022.4", detail_url="https://nccnchina.org.cn/guide/detail/1151",
+        )
+
+        async def run() -> None:
+            downloaded = await source.download(record, Path(tempfile.mkdtemp()), confirm_license=True)
+            self.assertTrue(Path(downloaded.path).is_file())
+
+        asyncio.run(run())
+
     def test_china_confirmation_blocks_download_log(self) -> None:
         calls = {"download_log": 0}
 
