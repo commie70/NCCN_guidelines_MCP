@@ -18,4 +18,6 @@ Failure handling:
 - No `search_content` hit → narrow the query or stop; never extract whole-document text.
 - Unverified English/Chinese pairing → keep records separate and label versions independently.
 
+Blacklist: no invented IDs/URLs, silent source switches, whole-PDF extraction, or medical advice.
+
 Do not provide medical advice. Explain that NCCN licensing, China quota limits, and site access rules apply.
