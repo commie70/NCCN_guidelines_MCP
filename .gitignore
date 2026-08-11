@@ -1,6 +1,7 @@
 # Python-generated files
 .DS_Store
 __pycache__/
+.codegraph/
 *.py[oc]
 build/
 dist/

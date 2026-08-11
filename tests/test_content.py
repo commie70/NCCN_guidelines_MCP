@@ -33,6 +33,10 @@ class ContentTests(unittest.TestCase):
         self.assertTrue(continued["chunks"])
         self.assertNotEqual(extracted["chunks"][0]["text"], continued["chunks"][0]["text"])
 
+    def test_search_falls_back_to_any_term_for_long_queries(self) -> None:
+        found = self.store.search(self.record.record_id, "first-line immunotherapy extensive-stage", top_k=3)
+        self.assertTrue(found["snippets"])
+
     def test_whole_document_and_over_limit_extracts_fail(self) -> None:
         with self.assertRaises(ContentError):
             self.store.extract(self.record.record_id)

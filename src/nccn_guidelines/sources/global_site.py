@@ -95,12 +95,21 @@ class GlobalSource:
     @staticmethod
     def _pdf_link(html: str, base_url: str) -> str | None:
         soup = BeautifulSoup(html, "html.parser")
+        candidates: list[tuple[str, str]] = []
         for link in soup.select("a[href]"):
             href = link.get("href", "")
-            label = link.get_text(" ", strip=True).casefold()
-            if href.casefold().split("?", 1)[0].endswith(".pdf") and ("nccn" in label or "guideline" in label or href):
-                return urljoin(base_url, href)
-        return None
+            if href.casefold().split("?", 1)[0].endswith(".pdf"):
+                candidates.append((link.get_text(" ", strip=True).casefold(), urljoin(base_url, href)))
+        # Detail pages also carry unrelated PDFs (user guides, prospectuses, patient
+        # versions). The canonical professional guideline is labelled "NCCN Guidelines"
+        # and lives under /professionals/physician_gls/pdf/.
+        for label, url in candidates:
+            if "/professionals/physician_gls/pdf/" in url.casefold() and label == "nccn guidelines":
+                return url
+        for _label, url in candidates:
+            if "/professionals/physician_gls/pdf/" in url.casefold():
+                return url
+        return candidates[0][1] if candidates else None
 
     async def _login(self, client: httpx.AsyncClient, target_url: str) -> None:
         if not self.credentials.complete:

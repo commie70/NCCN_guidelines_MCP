@@ -163,11 +163,13 @@ class ContentStore:
                 except sqlite3.OperationalError:
                     rows = []
             if not rows:
-                needle = query.casefold()
+                # Long natural-language queries rarely match as one string; degrade to
+                # any-term substring matching so agents still get candidate chunks.
+                terms = [term for term in re.findall(r"[\w一-鿿-]+", query.casefold()) if len(term) > 1]
                 rows = [
                     row
                     for row in db.execute("SELECT * FROM chunks WHERE record_id = ? ORDER BY pdf_page, ordinal", (record_id,)).fetchall()
-                    if needle in row["text"].casefold()
+                    if any(term in row["text"].casefold() for term in terms)
                 ][: int(top_k)]
             selected: dict[str, sqlite3.Row] = {row["chunk_id"]: row for row in rows}
             for row in rows:

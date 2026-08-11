@@ -81,15 +81,31 @@ class ChinaSource:
             card_text = card.get_text(" ", strip=True)
             title = node.get("data-title") or ""
             if not title:
+                # Live cards carry a dedicated title block; falling back to the whole
+                # card text would drag in the "英文版/版本" tags.
+                title_node = card.select_one(".cardData-li-title")
+                if title_node:
+                    title = title_node.get_text(" ", strip=True)
+            if not title:
                 heading = card.find(["h1", "h2", "h3", "h4", "strong", "a"])
                 title = heading.get_text(" ", strip=True) if heading else card_text
-            language = node.get("data-language") or cls._language(card_text)
+            language = node.get("data-language") or ""
+            if not language:
+                # Live cards tag the language explicitly ("中文版"/"英文版").
+                language_tag = next(
+                    (tag.get_text(strip=True) for tag in card.select(".li-tags") if re.search(r"中文版|英文版", tag.get_text())),
+                    None,
+                )
+                language = "zh" if language_tag and "中文" in language_tag else ("en" if language_tag else cls._language(card_text))
             language = "zh" if str(language).casefold().startswith("zh") else "en"
-            version_match = re.search(r"\b20\d{2}(?:\.\d+)+\b", card_text)
-            version = node.get("data-version") or (version_match.group(0) if version_match else None)
+            version_match = re.search(r"版本\s*(20\d{2}(?:\.\d+)*)", card_text) or re.search(r"\b20\d{2}(?:\.\d+)+\b", card_text)
+            version = node.get("data-version") or (version_match.group(1) if version_match and version_match.lastindex else (version_match.group(0) if version_match else None))
             title_en = node.get("data-title-en") or (title if language == "en" else node.get("data-title-zh") or title)
             title_zh = node.get("data-title-zh") or (title if language == "zh" else None)
             key = PAIRING_ALIASES.get(title_en.casefold()) or (PAIRING_ALIASES.get(title_zh) if title_zh else None) or slug(title_en)
+            if key == "unknown-guideline":
+                # Chinese-only titles do not slug; keep keys unique and stable per record.
+                key = f"china-guide-{version_id}"
             status = "verified" if (title_en.casefold() in PAIRING_ALIASES or (title_zh and title_zh in PAIRING_ALIASES)) else "unverified"
             records.append(
                 GuidelineRecord(
@@ -135,7 +151,10 @@ class ChinaSource:
                     payload = response.json()
                     data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
                     html = payload.get("html") or data.get("html") or payload.get("data") or ""
-                    has_more = bool(payload.get("has_more") or payload.get("hasMore") or data.get("has_more") or data.get("hasMore"))
+                    has_more = bool(
+                        payload.get("has_more") or payload.get("hasMore") or payload.get("hasNext")
+                        or data.get("has_more") or data.get("hasMore") or data.get("hasNext")
+                    )
                 except (ValueError, AttributeError):
                     html, has_more = response.text, False
                 page_records = self.parse_catalog_page(html)
@@ -301,6 +320,11 @@ class ChinaSource:
             try:
                 payload = logged.json()
                 if isinstance(payload, dict) and payload.get("success") is False:
+                    # Surface the quota category when the site declares it; the message
+                    # itself stays out of the error so no unexpected text leaks through.
+                    message = str(payload.get("msg") or "")
+                    if re.search(r"次数|上限|限制|quota|limit", message, re.I):
+                        raise SourceError("NCCN China download quota was reached for this account")
                     raise SourceError("NCCN China download authorization was rejected")
                 if isinstance(payload, dict):
                     issued_url = payload.get("download_url") or payload.get("url") or issued_url

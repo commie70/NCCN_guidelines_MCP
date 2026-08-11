@@ -58,6 +58,74 @@ class SourceTests(unittest.TestCase):
 
         asyncio.run(run())
 
+    def test_global_detail_prefers_canonical_pdf_over_distractors(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/guidelines/nccn-guidelines/guidelines-detail":
+                return httpx.Response(200, text=(FIXTURES / "global-detail-distractors.html").read_text())
+            if request.url.path == "/professionals/physician_gls/pdf/prostate.pdf":
+                return httpx.Response(200, content=b"%PDF-1.7\ncanonical", headers={"content-type": "application/pdf"})
+            if request.url.path.endswith(".pdf"):
+                return httpx.Response(200, content=b"%PDF-1.7\ndistractor", headers={"content-type": "application/pdf"})
+            return httpx.Response(404)
+
+        source = GlobalSource(
+            Credentials(None, None, "NCCN_GLOBAL_USERNAME", "NCCN_GLOBAL_PASSWORD"),
+            lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler), follow_redirects=True),
+        )
+        record = GuidelineRecord(
+            record_id="global:prostate-cancer:en", source="global", guideline_key="prostate-cancer", version_id=None,
+            title_en="Prostate Cancer", language="en", detail_url="https://www.nccn.org/guidelines/nccn-guidelines/guidelines-detail?category=1&id=1459",
+        )
+
+        async def run() -> None:
+            downloaded = await source.download(record, Path(tempfile.mkdtemp()))
+            self.assertEqual(Path(downloaded.path).read_bytes(), b"%PDF-1.7\ncanonical")
+
+        asyncio.run(run())
+
+    def test_china_discover_paginates_while_has_next(self) -> None:
+        pages: list[int] = []
+        cards = {
+            1: '<div class="cardData-li" onclick="guide_detail(200)"><h3>Prostate Cancer</h3><span>2026.1</span></div>'
+               '<div class="cardData-li" onclick="guide_detail(201)"><h3>前列腺癌</h3><span>2026.2</span></div>',
+            2: '<div class="cardData-li" onclick="guide_detail(202)"><h3>Lung Cancer</h3><span>2026.3</span></div>',
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/guide/index":
+                return httpx.Response(200, text='<meta name="csrf-token" content="csrf-token">')
+            if request.url.path == "/guide/more":
+                page = int(parse_qs(request.content.decode())["page"][0])
+                pages.append(page)
+                has_next = page < 2
+                return httpx.Response(200, json={"success": True, "msg": "ok", "html": cards[page], "hasNext": has_next, "dataSize": 1})
+            return httpx.Response(404)
+
+        source = ChinaSource(
+            Credentials(None, None, "NCCN_CHINA_USERNAME", "NCCN_CHINA_PASSWORD"),
+            lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        )
+
+        async def run() -> None:
+            records = await source.discover()
+            self.assertEqual(len(records), 3)
+
+        asyncio.run(run())
+        self.assertEqual(pages, [1, 2])
+
+    def test_china_live_card_markup_parses_clean_fields(self) -> None:
+        records = ChinaSource.parse_catalog_page((FIXTURES / "china-catalog-live.html").read_text())
+        self.assertEqual(len(records), 2)
+        nsclc, ovarian = records
+        self.assertEqual(nsclc.record_id, "china:1158:en")
+        self.assertEqual(nsclc.title, "非小细胞肺癌")
+        self.assertEqual(nsclc.version, "2026.7")
+        self.assertNotIn("英文版", nsclc.title)
+        self.assertNotIn(nsclc.guideline_key, ("unknown-guideline", "2026-7"))
+        self.assertEqual(ovarian.record_id, "china:1027:zh")
+        self.assertEqual(ovarian.title, "卵巢癌-中国版")
+        self.assertEqual(ovarian.version, "2025.3")
+
     def test_china_confirmation_blocks_download_log(self) -> None:
         calls = {"download_log": 0}
 
@@ -109,6 +177,27 @@ class SourceTests(unittest.TestCase):
             with self.assertRaises(SourceError):
                 await source.download(record, Path(tempfile.mkdtemp()), confirm_license=True)
             self.assertEqual(calls["download_log"], 0)
+
+        asyncio.run(run())
+
+    def test_china_download_log_quota_message_is_classified(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/guide/detail/1151":
+                return httpx.Response(200, text=(FIXTURES / "china-detail.html").read_text())
+            if request.url.path == "/guide/download-log":
+                return httpx.Response(200, json={"success": False, "msg": "今日下载次数已达上限"})
+            return httpx.Response(404)
+
+        source = ChinaSource(Credentials(None, None, "NCCN_CHINA_USERNAME", "NCCN_CHINA_PASSWORD"), lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+        record = GuidelineRecord(
+            record_id="china:1151:en", source="china", guideline_key="prostate-cancer", version_id="1151",
+            title_en="Prostate Cancer", language="en", version="2026.6", detail_url="https://nccnchina.org.cn/guide/detail/1151",
+        )
+
+        async def run() -> None:
+            with self.assertRaises(SourceError) as caught:
+                await source.download(record, Path(tempfile.mkdtemp()), confirm_license=True)
+            self.assertIn("quota", str(caught.exception))
 
         asyncio.run(run())
 
