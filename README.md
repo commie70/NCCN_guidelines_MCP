@@ -137,7 +137,7 @@ China catalog records are paired to the NCCN Global `guideline_key` through an e
 - **Three ambiguous titles stay unpaired** (`china-guide-{id}`, `pairing_status=unverified`): `免疫治疗相关毒性的管理` (overlaps the immune-checkpoint-toxicity title), `肝胆癌`, and `原发性皮肤淋巴瘤`. They are searchable and downloadable by `record_id`; they just do not merge with a Global key.
 - **Language mismatch is blocked, not downloaded.** If a detail page offers a PDF whose language differs from the selected record, the download stops with a `SourceError` before any `download-log` request, so a wrong-language file is never persisted.
 
-### Current versions only
+### Current versions only (latest)
 
 Catalog keep latest version per guideline. No archive page parsed, no old-version search, no old-version download. Refresh overwrite record with new version number. Old local PDF stay on disk and searchable, but re-download of same `record_id` replace its index. If a site offer archived versions, this MCP not expose them.
 
