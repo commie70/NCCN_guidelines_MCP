@@ -1,0 +1,22 @@
+{
+  "name": "nccn-guidelines",
+  "version": "0.2.0",
+  "description": "Search, download, and cite bounded NCCN Global and China guideline evidence.",
+  "author": {
+    "name": "commie70"
+  },
+  "repository": "https://github.com/commie70/NCCN_guidelines_MCP",
+  "license": "MIT",
+  "keywords": ["nccn", "clinical-guidelines", "medical-evidence"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "NCCN Guidelines",
+    "shortDescription": "Bounded NCCN Global and China evidence search",
+    "longDescription": "Search, license-confirm, download, and cite individual NCCN guideline versions without sending whole PDFs to the model.",
+    "developerName": "commie70",
+    "category": "Research",
+    "capabilities": ["Read"],
+    "websiteURL": "https://github.com/commie70/NCCN_guidelines_MCP"
+  }
+}

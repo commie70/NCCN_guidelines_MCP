@@ -1,0 +1,27 @@
+[
+  {
+    "id": 1,
+    "prompt": "What are the available first-line immunotherapy options for ES-SCLC?",
+    "expected": "Use the skill workflow: search_guidelines first, preserve the returned record_id, download only the selected record when permitted, search_content before extract_content, and answer with guideline title, source, version, PDF page, detail URL, and a clear note when the authenticated source or evidence is unavailable. Do not provide medical advice or invent treatment evidence."
+  },
+  {
+    "id": 2,
+    "prompt": "What is the initial chemotherapy for triple-negative breast cancer?",
+    "expected": "Use a bounded NCCN evidence workflow rather than a general medical answer: identify the exact language/source/version, accept a clearly reported same-language source=auto fallback, expand only relevant chunks or pages, cite page-level support, distinguish English and Chinese versions, and surface authentication/license errors without manually switching records."
+  },
+  {
+    "id": 3,
+    "prompt": "What are the immunotherapy options for neuroendocrine tumors?",
+    "expected": "Return a concise evidence answer grounded in a specific NCCN record and page-addressable snippets. Keep record_id opaque, avoid whole-PDF extraction, state source/version differences, and explicitly report if no validated indexed PDF is available."
+  },
+  {
+    "id": 4,
+    "prompt": "下载最新的前列腺癌NCCN诊疗指南中文版",
+    "expected": "Search with language=zh and source=auto so China is preferred and any same-language cross-site fallback is reported. If no zh-language record exists, say so explicitly and offer available language versions with exact title/version; never silently substitute English. Show the 🔴 consent checkpoint with exact title, source, language, and version before any single China download_guideline call with confirm_license=true."
+  },
+  {
+    "id": 5,
+    "prompt": "Get me the prostate cancer NCCN guideline PDF",
+    "expected": "When search_guidelines returns multiple candidates for one cancer (e.g. Prostate Cancer vs Prostate Cancer Early Detection vs Genetic/Familial High-Risk Assessment), select the exact title match or present the candidates to the user; never blindly download the first hit. Preserve the chosen record's opaque record_id."
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "name": "nccn-guidelines",
+  "version": "0.2.0",
+  "description": "Search, download, and cite bounded NCCN Global and China guideline evidence.",
+  "author": {
+    "name": "commie70"
+  },
+  "homepage": "https://github.com/commie70/NCCN_guidelines_MCP",
+  "license": "MIT",
+  "skills": "./skills/",
+  "mcpServers": {
+    "nccn-guidelines": {
+      "command": "uv",
+      "args": ["run", "nccn-guidelines-mcp"],
+      "cwd": "./"
+    }
+  },
+  "interface": {
+    "displayName": "NCCN Guidelines",
+    "shortDescription": "Bounded NCCN Global and China evidence search",
+    "developerName": "commie70",
+    "websiteURL": "https://github.com/commie70/NCCN_guidelines_MCP"
+  }
+}
