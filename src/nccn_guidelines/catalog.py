@@ -114,6 +114,45 @@ class CatalogStore:
             ).fetchall()
         return [GuidelineRecord.from_dict(json.loads(row["record_json"])) for row in rows]
 
+    def search_auto_paired(self, query: str, guide_type: str = "clinical", limit: int = 8) -> list[GuidelineRecord]:
+        """Pair Global English with China Chinese, using China English as fallback."""
+
+        limit = max(1, min(int(limit), 20))
+        if limit < 2:
+            return []
+        clauses = ["source IN ('global', 'china')", "language IN ('en', 'zh')"]
+        params: list[object] = []
+        if guide_type != "any":
+            clauses.append("guide_type = ?")
+            params.append(guide_type)
+        with self._connect() as db:
+            rows = db.execute(
+                f"SELECT record_json FROM records WHERE {' AND '.join(clauses)} ORDER BY retrieved_at DESC",
+                params,
+            ).fetchall()
+        records = [GuidelineRecord.from_dict(json.loads(row["record_json"])) for row in rows]
+        needle = query.casefold().strip().replace("-", " ")
+        by_key: dict[str, dict[str, GuidelineRecord]] = {}
+        matched_keys: set[str] = set()
+        for record in records:
+            if record.source == "china" and record.pairing_status != "verified":
+                continue
+            slot = "global_en" if record.source == "global" else f"china_{record.language}"
+            by_key.setdefault(record.guideline_key, {}).setdefault(slot, record)
+            haystack = " ".join(filter(None, (record.guideline_key.replace("-", " "), record.title_en, record.title_zh))).casefold()
+            if needle in haystack:
+                matched_keys.add(record.guideline_key)
+        result: list[GuidelineRecord] = []
+        for key in sorted(matched_keys):
+            pair = by_key[key]
+            english = pair.get("global_en") or pair.get("china_en")
+            chinese = pair.get("china_zh")
+            if english and chinese:
+                result.extend((english, chinese))
+            if len(result) + 2 > limit:
+                break
+        return result
+
     def mark_refresh(self, source: str, error: str | None = None) -> None:
         with self._connect() as db:
             if error:

@@ -78,10 +78,11 @@ class Route:
     source: Literal["global", "china"]
     language: LanguageRequest
     global_configured: bool
+    fallback_source: Literal["global", "china"] | None = None
 
 
 def select_source(language: LanguageRequest = "en", source: SourceRequest = "auto", settings: Settings | None = None) -> Route:
-    """Implement the immutable route table; failures never cause failover."""
+    """Select the primary catalog and the transparent auto-mode fallback."""
 
     if language not in {"en", "zh", "paired"}:
         raise RoutingError("language must be en, zh, or paired")
@@ -95,5 +96,6 @@ def select_source(language: LanguageRequest = "en", source: SourceRequest = "aut
     if source == "china":
         return Route("china", language, configured)
     if language in {"zh", "paired"}:
-        return Route("china", language, configured)
-    return Route("global" if configured else "china", language, configured)
+        return Route("china", language, configured, "global")
+    primary = "global" if configured else "china"
+    return Route(primary, language, configured, "china" if primary == "global" else "global")

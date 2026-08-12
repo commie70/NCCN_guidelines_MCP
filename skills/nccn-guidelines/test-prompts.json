@@ -7,7 +7,7 @@
   {
     "id": 2,
     "prompt": "What is the initial chemotherapy for triple-negative breast cancer?",
-    "expected": "Use a bounded NCCN evidence workflow rather than a general medical answer: identify the exact language/source/version, search for candidate evidence, expand only relevant chunks or pages, cite page-level support, distinguish English and Chinese versions, and stop with a surfaced authentication/license error instead of silently switching sites."
+    "expected": "Use a bounded NCCN evidence workflow rather than a general medical answer: identify the exact language/source/version, accept a clearly reported same-language source=auto fallback, expand only relevant chunks or pages, cite page-level support, distinguish English and Chinese versions, and surface authentication/license errors without manually switching records."
   },
   {
     "id": 3,
@@ -17,7 +17,7 @@
   {
     "id": 4,
     "prompt": "下载最新的前列腺癌NCCN诊疗指南中文版",
-    "expected": "Search the China catalog with a Chinese query (前列腺癌), since record titles there are Chinese. If no zh-language record exists for the cancer, say so explicitly and offer the available language versions (e.g. 英文版) with exact title/version; never silently substitute another language or another site. Show the 🔴 consent checkpoint with exact title, source, language, and version before any single download_guideline call with confirm_license=true."
+    "expected": "Search with language=zh and source=auto so China is preferred and any same-language cross-site fallback is reported. If no zh-language record exists, say so explicitly and offer available language versions with exact title/version; never silently substitute English. Show the 🔴 consent checkpoint with exact title, source, language, and version before any single China download_guideline call with confirm_license=true."
   },
   {
     "id": 5,

@@ -14,16 +14,21 @@ class RoutingTests(unittest.TestCase):
         return Settings.from_env(env)
 
     def test_auto_table(self) -> None:
-        self.assertEqual(select_source("en", "auto", self.settings(True)).source, "global")
-        self.assertEqual(select_source("en", "auto", self.settings(False)).source, "china")
+        configured_english = select_source("en", "auto", self.settings(True))
+        self.assertEqual((configured_english.source, configured_english.fallback_source), ("global", "china"))
+        unconfigured_english = select_source("en", "auto", self.settings(False))
+        self.assertEqual((unconfigured_english.source, unconfigured_english.fallback_source), ("china", "global"))
         for configured in (True, False):
             for language in ("zh", "paired"):
-                self.assertEqual(select_source(language, "auto", self.settings(configured)).source, "china")
+                route = select_source(language, "auto", self.settings(configured))
+                self.assertEqual((route.source, route.fallback_source), ("china", "global"))
 
     def test_explicit_source_and_invalid_global_language(self) -> None:
         settings = self.settings(False)
         self.assertEqual(select_source("en", "china", settings).source, "china")
         self.assertEqual(select_source("en", "global", settings).source, "global")
+        self.assertIsNone(select_source("en", "china", settings).fallback_source)
+        self.assertIsNone(select_source("en", "global", settings).fallback_source)
         for language in ("zh", "paired"):
             with self.assertRaises(RoutingError):
                 select_source(language, "global", settings)

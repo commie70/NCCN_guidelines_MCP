@@ -1,49 +1,44 @@
 # 🏥 nccn-guidelines plugin
 
-[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
-[![MCP](https://img.shields.io/badge/MCP-stdio-green.svg)](https://modelcontextprotocol.io/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.0-orange.svg)](https://github.com/commie70/NCCN_guidelines_MCP/releases)
+NCCN（National Comprehensive Cancer Network）MCP。小段检索，按页引用，不让 Agent 吃满整本指南。批量下载最新中/英 PDF。
 
-Bounded NCCN Global and NCCN China guideline retrieval for MCP agents. It returns small, cited evidence slices instead of full catalogs or full PDFs.
+[English](README-en.md)
 
-[简体中文](README-zh.md)
+## 能做什么
 
-## 🔬 How It Works
+- 触达 [NCCN Global](https://www.nccn.org/) 和 [NCCN China](https://www.nccnchina.org.cn/)
+- 英文指南优先走 Global，中文指南优先走 China；中英配套请求分别从两站取对应语言
+- 检索指南证据，答案附标题、来源、版本、详情页和 PDF 页码
+- 下载单份指南，也可以批量下载最新中/英 PDF
+- PDF 和可检索索引存至本地
 
-1. Search a source-specific catalog and keep its stable `record_id`.
-2. Confirm any China download for that exact record.
-3. Parse a downloaded PDF once into page-bound chunks in local SQLite.
-4. Search snippets, then expand only the relevant chunks or pages.
-5. Cite title, source, version, detail URL, and PDF page.
+## 工作流
 
-## ✨ Features
+1. 直接告诉 Agent 癌种、治疗问题、语言或下载 中/英 指南。
+2. MCP 搜索当前目录并选择合适站点。
+3. Agent 下载 PDF 并建立本地分页索引。
+4. 检索相关页面，给出带出处的回答。
 
-- NCCN Global (`nccn.org`) and NCCN China (`nccnchina.org.cn`) catalogs.
-- Automatic routing: English prefers Global when complete Global credentials exist; Chinese and paired requests use China.
-- Stable records. No MCP tool accepts an arbitrary URL, path, username, or password.
-- Per-record China license confirmation. A rejected/omitted confirmation makes zero `download-log` requests.
-- Site/language/version-separated files, atomic writes, SHA-256 manifests, and local SQLite catalog/content stores.
-- Bounded retrieval: catalog results ≤20; snippets ≤1,200 chars each and ≤45,000 chars total; extraction requires selectors and is limited to 120 chunks or 80 pages, up to 250,000 chars per call.
-- SQLite FTS5 uses `trigram` when available, then `unicode61`, then a bounded deterministic fallback. No vector database or background indexer.
+## 安装
 
-## 🛠️ Installation
+`nccn-guidelines` skill 随 plugin 自动获得。
 
 ### Codex plugin
 
 ```bash
 codex plugin marketplace add commie70/NCCN_guidelines_MCP --ref main
 codex plugin add nccn-guidelines@nccn-guidelines
+# 或直接告诉Agent：“安装这个plugin：https://github.com/commie70/NCCN_guidelines_MCP”
 ```
 
-### Kimi Code CLI
+### Kimi Code
 
 ```text
 /plugins install https://github.com/commie70/NCCN_guidelines_MCP
 /reload
 ```
 
-### Generic MCP agent
+### 其他 Agents：配置通用 MCP
 
 ```bash
 git clone https://github.com/commie70/NCCN_guidelines_MCP
@@ -51,34 +46,43 @@ cd NCCN_guidelines_MCP
 uv sync
 ```
 
-Use this stdio configuration, replacing `<absolute-path-to-repo>`:
+把 `<仓库绝对路径>` 换成真实路径。
 
 ```json
 {
   "mcpServers": {
     "nccn-guidelines": {
       "command": "uv",
-      "args": ["--directory", "<absolute-path-to-repo>", "run", "nccn-guidelines-mcp"]
+      "args": ["--directory", "<仓库绝对路径>", "run", "nccn-guidelines-mcp"]
     }
   }
 }
 ```
 
-## ⚙️ Configuration
+## 配置
 
-Set environment variables in the MCP process, never as tool arguments or committed `.env` files.
+### 注册账号
 
-### Accounts and private MCP configuration
+Global 与 China 使用两套账号。
 
-Create the two accounts separately before configuring a download client:
+- **NCCN Global**　[登录或注册](https://www.nccn.org/login)
+- **NCCN China**　[官方注册页](https://www.nccnchina.org.cn/user/register?redirect_url=https%253A%252F%252Fwww.nccnchina.org.cn%252Findex)
 
-- **NCCN Global:** [account sign-in / registration portal](https://www.nccn.org/login).
-- **NCCN China:** [official registration page](https://www.nccnchina.org.cn/user/register?redirect_url=https%253A%252F%252Fwww.nccnchina.org.cn%252Findex). It currently requires mobile and email verification.
+China 账号请把网站接受的手机号或其他登录标识填入 `NCCN_CHINA_USERNAME`。
 
-The checked-in plugin manifests deliberately contain no user credentials. For
-authenticated use with a Codex client, add a **private local** STDIO server and
-forward only the variable names. Put this in `~/.codex/config.toml` (or a
-trusted project-local `.codex/config.toml`), replacing the path:
+### 方式一　设置环境变量
+
+启动 Agents 前设置凭据。
+
+```bash
+export NCCN_GLOBAL_USERNAME='<global-email>'
+export NCCN_GLOBAL_PASSWORD='<global-password>'
+export NCCN_CHINA_USERNAME='<china-login-identifier>'
+export NCCN_CHINA_PASSWORD='<china-password>'
+export NCCN_DATA_DIR="$HOME/.nccn-guidelines"  # 可选
+```
+
+Codex / Kimi 可在 `~/.codex/config.toml` `~/.kimi-code/config.toml` 中读取这些变量。
 
 ```toml
 [mcp_servers.nccn-guidelines-auth]
@@ -93,141 +97,126 @@ env_vars = [
 ]
 ```
 
-Then set the values in the shell that starts Codex and restart the client so it
-restarts the MCP process:
+配置变化后重启 Codex，或在 Kimi Code 中运行 `/reload`。
 
-```bash
-export NCCN_GLOBAL_USERNAME='<global-email>'
-export NCCN_GLOBAL_PASSWORD='<global-password>'
-export NCCN_CHINA_USERNAME='<china-login-identifier>'
-export NCCN_CHINA_PASSWORD='<china-password>'
-export NCCN_DATA_DIR="$HOME/.nccn-guidelines"  # optional
-codex
+### 方式二　直接写入私有 MCP 配置
+
+也可以把凭据直接写入本机 MCP 配置。注意配置文件不要泄露。
+
+Codex `~/.codex/config.toml`
+
+```toml
+[mcp_servers.nccn-guidelines-auth]
+command = "uv"
+args = ["--directory", "/absolute/path/to/NCCN_guidelines_MCP", "run", "nccn-guidelines-mcp"]
+
+[mcp_servers.nccn-guidelines-auth.env]
+NCCN_GLOBAL_USERNAME = "<global-email>"
+NCCN_GLOBAL_PASSWORD = "<global-password>"
+NCCN_CHINA_USERNAME = "<china-login-identifier>"
+NCCN_CHINA_PASSWORD = "<china-password>"
+NCCN_DATA_DIR = "/absolute/path/to/private-data"
 ```
 
-`env_vars` avoids saving values in `config.toml`. A private host configuration
-may instead use its `env` map or `codex mcp add --env NAME=VALUE`; those write
-secrets to local configuration, so never commit or share that file. The
-marketplace plugin can remain installed for its Skill; disable its bundled MCP
-server if the extra `nccn-guidelines-auth` tool set would be confusing. Kimi
-Code users apply the same environment variables to the process that launches
-its configured STDIO server, then reload the plugin/server. Do **not** add
-credentials to `.mcp.json`, `kimi.plugin.json`, or any repository file.
+Kimi Code `~/.kimi-code/mcp.json`
 
-`NCCN_USERNAME` and `NCCN_PASSWORD` remain temporary aliases for the Global pair. If new and legacy names are both present, `NCCN_GLOBAL_*` wins. Catalog, content, downloads, manifests, and logs live under `NCCN_DATA_DIR` (default `~/.nccn-guidelines`), never in the plugin installation directory.
+```json
+{
+  "mcpServers": {
+    "nccn-guidelines-auth": {
+      "command": "uv",
+      "args": ["--directory", "/absolute/path/to/NCCN_guidelines_MCP", "run", "nccn-guidelines-mcp"],
+      "env": {
+        "NCCN_GLOBAL_USERNAME": "<global-email>",
+        "NCCN_GLOBAL_PASSWORD": "<global-password>",
+        "NCCN_CHINA_USERNAME": "<china-login-identifier>",
+        "NCCN_CHINA_PASSWORD": "<china-password>",
+        "NCCN_DATA_DIR": "/absolute/path/to/private-data"
+      }
+    }
+  }
+}
+```
 
-NCCN China currently labels its password-login identifier as `mobile`; set `NCCN_CHINA_USERNAME` to an identifier the China site accepts. Do not assume that a Global email login is accepted by China.
+`NCCN_DATA_DIR` 默认使用 `~/.nccn-guidelines`。
 
-For a site that only works in an already authorized browser session, each source also accepts an **optional, explicit** `NCCN_GLOBAL_SESSION_COOKIE` or `NCCN_CHINA_SESSION_COOKIE` environment value. It is a full `Cookie` request header supplied by the user to the MCP process. The plugin never reads Chrome's cookies, accepts a cookie through an MCP tool, returns it, or writes it to logs/manifests. A rejected explicit session stops with an authentication error; it never falls back to another source.
+### 自动选站
 
-| Request | `source=auto` route |
+| 需求 | `source=auto` |
 | --- | --- |
-| English with complete Global credentials | Global |
-| English without complete Global credentials | China catalog |
-| Chinese | China |
-| Paired English + Chinese | China; versions may differ |
+| 英文指南且有 Global 凭据 | NCCN Global |
+| 英文指南但没有 Global 凭据 | NCCN China |
+| 中文指南 | NCCN China |
+| 中 / 英 指南 | Global 英文 + China 中文 |
 
-An explicit `source` overrides this table. `source=global` with `language=zh` or `paired` is an error. A network, password, quota, or site error never silently switches sources.
+自动搜索在首选目录刷新失败或无结果时会尝试同语言跨站兜底，并返回实际来源。手动指定来源会覆盖自动选择，不再自动换站。
 
-### Chinese/English record alignment limits
+### Agent Computer Use 工具备选
 
-China catalog records are paired to the NCCN Global `guideline_key` through an explicit, verified title map. As of 2026-08-11, 95 of 98 live China records pair with `pairing_status=verified`. The remaining cases are deliberate, not bugs:
+MCP 链路不通时，可让 Agents 使用 Computer Use 工具接管浏览器下载指南。
 
-- **Dual-tagged `-中国版` cards are not split.** The 宫颈癌/子宫肿瘤/卵巢癌 China-edition cards show both `中文版` and `英文版` tags, but each detail page offers only the Chinese PDF. Their English versions are separate catalog records (e.g. `china:989:en`). The plugin keeps one record per card instead of inventing English records that would always fail at download.
-- **Three ambiguous titles stay unpaired** (`china-guide-{id}`, `pairing_status=unverified`): `免疫治疗相关毒性的管理` (overlaps the immune-checkpoint-toxicity title), `肝胆癌`, and `原发性皮肤淋巴瘤`. They are searchable and downloadable by `record_id`; they just do not merge with a Global key.
-- **Language mismatch is blocked, not downloaded.** If a detail page offers a PDF whose language differs from the selected record, the download stops with a `SourceError` before any `download-log` request, so a wrong-language file is never persisted.
+优先推荐 [Kimi Computer Use](https://www.kimi.com/code/docs/kimi-code-cli/customization/plugins.html#kimi-computer-use)。它可以通过 Kimi Code、Codex CLI 或 ChatGPT app 控制浏览器。使用前只需保证浏览器里的 NCCN Global 和 NCCN China 都处于登录状态。随后让 Agent 打开准确的指南、选择语言、接受站点协议并下载 PDF。
 
-### Current versions only (latest)
+浏览器下载的 PDF 不会自动加入本 plugin 的检索索引。需要分页检索时，再恢复 MCP 链路。
 
-Catalog keep latest version per guideline. No archive page parsed, no old-version search, no old-version download. Refresh overwrite record with new version number. Old local PDF stay on disk and searchable, but re-download of same `record_id` replace its index. If a site offer archived versions, this MCP not expose them.
+ChatGPT / Codex 用户可参阅 [Computer Use 官方文档](https://learn.chatgpt.com/docs/computer-use) 和 [桌面端使用案例](https://learn.chatgpt.com/use-cases/use-your-computer-with-codex)。
 
-### Browser fallback when the Python `httpx` path is blocked
+## 使用案例
 
-The Python MCP path is the only path that persists, indexes, and searches a
-PDF. If a site rejects its login/session, use a browser fallback only to obtain
-one permitted PDF; it is not a cookie bridge and it does not make the browser
-file available to `search_content` automatically.
+Codex 使用 `$nccn-guidelines`，Kimi Code 使用 `/skill:nccn-guidelines`。
 
-1. **Codex Computer Use.** Follow the official [Computer Use guide](https://learn.chatgpt.com/docs/computer-use) and [Codex browser workflow](https://learn.chatgpt.com/use-cases/use-your-computer-with-codex). This is a capability of a supported Codex/ChatGPT host, not a dependency to add to this plugin. In a fresh tab, sign in yourself, navigate to the exact NCCN detail page, choose the requested language, accept the displayed EULA, and confirm one download. Do not ask an agent to reveal or copy cookies.
-2. **Kimi Computer Use.** Install [Kimi Code CLI](https://www.kimi.com/help/kimi-code/cli-getting-started) and use its [MCP configuration method](https://platform.kimi.com/docs/guide/kimi-cli-support). A public vendor installer for the separate `kimi-cu` computer-control runtime was not verified when this README was updated; installing Kimi Code alone does **not** install it. If your environment provides `kimi-cu`, expose it as a local MCP server, for example `kimi-cu mcp -s user`, then use the same fresh-tab, user-authenticated, one-record flow. Never put NCCN credentials in that MCP configuration.
+### ES-SCLC 一线有哪些免疫治疗方案？
 
-Both fallbacks require an account entitled to the content and explicit
-acceptance of the site terms. They must not bulk-download, reuse a temporary
-PDF URL, or copy an acquired PDF into this plugin's data directory by hand.
-Resolve the HTTP authentication issue (or provide a user-explicit session
-cookie through the configuration above) before using the MCP content tools.
 
-## 💬 Skill
+```text
+可用方案包括
+- 卡铂/依托泊苷联合阿替利珠单抗，随后使用阿替利珠单抗维持。
+- 卡铂或顺铂/依托泊苷联合度伐利尤单抗，随后使用度伐利尤单抗维持。
 
-Plugin installation exposes the `nccn-guidelines` skill automatically. Use `$nccn-guidelines` in Codex or `/skill:nccn-guidelines` in Kimi Code CLI when you want to invoke it explicitly. The skill enforces: search first, China confirmation before download, small evidence search before expansion, and source/version/page citations.
+指南：Small Cell Lung Cancer
+来源：NCCN Global
+版本：1.2027，2026 年 7 月 1 日
+PDF：第 21 页
+详情页：https://www.nccn.org/guidelines/nccn-guidelines/guidelines-detail?category=1&id=1462
+```
 
-## 🛠️ Available Tools
+### 三阴性乳腺癌的初始化疗是什么？
 
-| Tool | Purpose |
-| --- | --- |
-| `search_guidelines(query, language, source, guide_type, limit)` | Search a bounded catalog and return stable records. |
-| `refresh_catalog(source, force)` | Refresh metadata only; never downloads PDFs. |
-| `get_download_requirements(record_id)` | Show the exact record, configuration, and license requirements. |
-| `download_guideline(record_id, confirm_license)` | Download one catalogued record; China requires explicit confirmation. |
-| `search_content(record_id, query, top_k, include_neighbors)` | Return bounded page-addressable candidate snippets. |
-| `extract_content(record_id, chunk_ids, pages, max_chars, cursor)` | Expand selected evidence only; selectors are required. |
 
-`get_index` is a compatibility response only and points agents to `search_guidelines`; it never returns the historic full YAML catalog.
+```text
+对于 II 至 III 期三阴性乳腺癌，NCCN 列出的术前方案为卡铂/紫杉醇联合
+帕博利珠单抗，随后使用环磷酰胺/多柔比星或表柔比星联合帕博利珠单抗，
+术后继续帕博利珠单抗。
 
-`record_id` is an opaque identifier returned by `search_guidelines`; preserve it verbatim instead of constructing it. For example, a returned `china:1158:en` is passed unchanged to `get_download_requirements`, `download_guideline`, `search_content`, and `extract_content`.
+指南：Breast Cancer
+来源：NCCN Global
+版本：6.2026，2026 年 7 月 29 日
+PDF：第 73 页
+详情页：https://www.nccn.org/guidelines/nccn-guidelines/guidelines-detail?category=1&id=1419
+```
 
-## 💡 Usage Example
+### 神经内分泌肿瘤有哪些免疫治疗方案？
 
-Here are some example questions you can ask:
 
-1. 🔬 What are the available first-line immunotherapy options for ES-SCLC?
-2. 🎯 What is the initial chemotherapy for triple-negative breast cancer?
-3. 🧬 What are the immunotherapy options for neuroendocrine tumors?
+```text
+对于肺外低分化神经内分泌癌，NCCN 列出的方案包括
+- 既往治疗后进展、没有满意替代方案的 MSI-H、dMMR 或 TMB-H 肿瘤可考虑帕博利珠单抗。
+- 转移性疾病进展后可考虑伊匹木单抗联合纳武利尤单抗，推荐等级为 2B 类。
 
-## 📊 Live evaluation (2026-08-11)
+指南：Neuroendocrine and Adrenal Tumors
+来源：NCCN Global
+版本：1.2026，2026 年 4 月 21 日
+PDF：第 108 至 109 页
+详情页：https://www.nccn.org/guidelines/nccn-guidelines/guidelines-detail?category=1&id=1448
+```
 
-The two acquisition controls used the same official China record,
-`china:1158:en` (Non-Small Cell Lung Cancer, English, version 2026.7). Both
-successful browser runs produced the same 5,804,744-byte PDF with SHA-256
-`89a315e4b4a762b35953d31eff51420e7eccca2830ca30d0d0d1fb20ae917987`.
+以上案例用于展示指南证据检索，不构成针对个人的医疗建议。
 
-| Path | Outcome | Measured acquisition time | Interaction / request count | Evidence-quality E2E |
-| --- | --- | ---: | --- | --- |
-| Direct official NCCN China browser | Downloaded one validated 302-page PDF | 2.5–3.0 s from license confirmation to completed file | 4 UI actions; 4 necessary network steps; 0 retries | Not measured (acquisition control) |
-| Kimi Computer Use browser control | Downloaded the identical validated PDF | 22.5 s from fresh tab to completed file | 5 UI actions; 4 observation snapshots | Not measured (acquisition control) |
-| This plugin, Python live runs (2026-08-11/12) | Downloaded and indexed both China (EN and ZH) and Global records through a Codex MCP client | Catalog ~0.3 s; seconds per confirmed record | `confirm_license=false` made 0 HTTP requests; exactly one `download-log` per confirmed record | Passed: ES-SCLC first-line immunotherapy regimens answered with title, version, and PDF page citations (SCL-E 1 of 6, p.21) |
+## 注意
 
-The Python path is now verified end to end on both sites with the current
-contracts: Global catalog and PDF download (e.g. Non-Small Cell Lung Cancer,
-3,818,554 bytes, indexed into 1541 chunks), and China password-mode login with
-a `mobile` identifier followed by consented downloads, including the
-Chinese-language record `china:1026:zh` (宫颈癌-中国版, version 2025.4). China
-enforces a quota of 10 downloads per account per day, resetting at 00:00 CST;
-quota rejections are classified into a distinct `download quota was reached`
-error. The project must not import browser cookies or bypass this gate.
-
-Reproducible raw observations: [`baseline_direct.md`](tests/evals/baseline_direct.md),
-[`baseline_kimi_cu.md`](tests/evals/baseline_kimi_cu.md), and
-`tests/evals/project_live_e2e.md` / `tests/evals/results.json`.
-
-### Compatibility follow-up
-
-Kimi Computer Use reproduced the China browser contract in an isolated tab:
-select the exact detail record, open its download, accept the displayed
-EULA, and confirm. That performs one `download-log` request before the browser
-constructs the PDF request. The Python adapter parses that in-memory detail
-contract (without storing its token or URL), while retaining the older form
-contract as a fallback, and blocks a download when the offered PDF language
-differs from the selected record. A live refresh on 2026-08-11 found 91 Global
-records and 98 China records; 95 of the China records pair to Global
-`guideline_key` values (`pairing_status=verified`). The 31 fixture/MCP tests
-cover both current contracts, the pairing map, and the quota/language guards.
-
-## ⚠️ License, safety, and troubleshooting
-
-- NCCN content is licensed. The user must have the required account and accept the applicable terms. For NCCN China, state the exact title, language, version, and source, then obtain permission before the one-record download call.
-- China currently enforces its own quota and access controls: 10 downloads per account per day, resetting at 00:00 CST; quota rejections surface as a distinct `download quota was reached` error. The plugin never bulk-probes, retries `download-log`, or treats an old Chinese translation as the current English version.
-- China supports both its historic form contract and its current browser contract: the selected detail page supplies the one-record `download-log` fields, and the plugin constructs the immediate PDF request only after that log call succeeds. Global catalog discovery supports both legacy cards and current `guidelines-detail` links.
-- Do not put credentials in prompts, tool calls, logs, issues, screenshots, or repository files. Rotate any credential that was accidentally exposed.
-- This plugin retrieves guideline evidence; it is not medical advice. Apply professional judgment and local policy.
-- If catalog refresh fails, stale previously successful data is labelled `stale=true` with the last successful time. If FTS is unavailable, the bounded fallback is reported. Image-only PDFs are flagged `ocr_required`; this plugin does not upload licensed PDFs to third-party OCR.
+- NCCN 内容受许可保护。请使用有访问资格的账号，并接受对应站点协议。
+- NCCN 站点通过本流程只提供最新版指南，无法访问历史版本。
+- NCCN China 每份 PDF 都要单独确认，目前每个账号每天最多下载 10 份。
+- 中英文指南的版本可能不同。成对下载时会分别保存两个版本。
+- 凭据不要放进提示词、截图、日志、Issue 或提交到仓库的文件。泄露后请及时轮换。
+- 本 plugin 用于检索和下载指南证据。临床决策仍需结合专业判断和本地规范。

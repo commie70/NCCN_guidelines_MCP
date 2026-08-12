@@ -45,26 +45,74 @@ class NCCNService:
                 result["sources"].append({**self.catalog.status(name), "refreshed": False, "error": str(error)})
         return result
 
-    async def search(self, query: str, language: str, source: str, guide_type: str, limit: int) -> dict[str, object]:
-        route = select_source(language, source, self.settings)
-        status = self.catalog.status(route.source)
+    async def _ensure_catalog(self, source: Literal["global", "china"]) -> tuple[dict[str, object], str | None]:
+        status = self.catalog.status(source)
         refresh_error = None
         if status["stale"]:
-            refreshed = await self.refresh(route.source)
+            refreshed = await self.refresh(source)
             source_result = refreshed["sources"][0]
             refresh_error = source_result.get("error") if isinstance(source_result, dict) else None
-            status = self.catalog.status(route.source)
-        records = self.catalog.search(query, route.source, route.language, guide_type, limit)
+            status = self.catalog.status(source)
+        return status, refresh_error
+
+    async def search(self, query: str, language: str, source: str, guide_type: str, limit: int) -> dict[str, object]:
+        route = select_source(language, source, self.settings)
+        if source == "auto" and language == "paired":
+            source_status: dict[str, dict[str, object]] = {}
+            refresh_errors: dict[str, str] = {}
+            for name in ("global", "china"):
+                status, error = await self._ensure_catalog(name)
+                source_status[name] = status
+                if error:
+                    refresh_errors[name] = error
+            records = self.catalog.search_auto_paired(query, guide_type, limit)
+            sources_used = list(dict.fromkeys(record.source for record in records))
+            selected_source = "+".join(sources_used) if sources_used else "global+china"
+            return {
+                "query": query,
+                "source": selected_source,
+                "language": language,
+                "guide_type": guide_type,
+                "records": [record.public_dict() for record in records],
+                "stale": any(status["stale"] for status in source_status.values()),
+                "last_success": {name: status["last_success"] for name, status in source_status.items()},
+                "refresh_error": next(iter(refresh_errors.values()), None),
+                "refresh_errors": refresh_errors or None,
+                "global_credentials_configured": route.global_configured,
+                "fallback_used": bool(records) and "global" not in sources_used,
+                "source_attempts": list(source_status),
+            }
+
+        records: list[GuidelineRecord] = []
+        source_status = {}
+        refresh_errors = {}
+        selected_source = route.source
+        attempts = [route.source]
+        if source == "auto" and route.fallback_source:
+            attempts.append(route.fallback_source)
+        for name in attempts:
+            status, error = await self._ensure_catalog(name)
+            source_status[name] = status
+            if error:
+                refresh_errors[name] = error
+            records = self.catalog.search(query, name, route.language, guide_type, limit)
+            if records:
+                selected_source = name
+                break
+        status = source_status[selected_source]
         return {
             "query": query,
-            "source": route.source,
+            "source": selected_source,
             "language": route.language,
             "guide_type": guide_type,
             "records": [record.public_dict() for record in records],
             "stale": status["stale"],
             "last_success": status["last_success"],
-            "refresh_error": refresh_error,
+            "refresh_error": next(iter(refresh_errors.values()), None),
+            "refresh_errors": refresh_errors or None,
             "global_credentials_configured": route.global_configured,
+            "fallback_used": selected_source != route.source,
+            "source_attempts": list(source_status),
         }
 
     def requirements(self, record_id: str) -> dict[str, object]:
