@@ -121,6 +121,10 @@ China 目录通过一张显式核对过的标题映射表对齐到 NCCN Global �
 - **3 个歧义标题保持未配对**（`china-guide-{id}`，`pairing_status=unverified`）：`免疫治疗相关毒性的管理`（与免疫检查点毒性条目疑似新旧名）、`肝胆癌`、`原发性皮肤淋巴瘤`。它们仍可凭 `record_id` 正常搜索与下载，只是不并入 Global key。
 - **语言不匹配直接拦截。** 详情页提供的 PDF 语言与所选记录不一致时，下载在任何 `download-log` 请求之前以 `SourceError` 终止，不会落盘错误语言的文件。
 
+### 只有当前版本
+
+目录只存每个指南当前版本。归档页不解析，旧版搜不到，旧版下不了。refresh 拿新版本号覆盖记录。本地旧 PDF 还在盘上、还能检索，但同一 `record_id` 重新下载会顶掉索引。站点就算有归档，本 MCP 也不暴露。
+
 ### Python `httpx` 链路不通时：浏览器备选
 
 Python MCP 才会把 PDF 入库、建索引、供 `search_content` 检索。若站点拒绝它的登录/会话，浏览器只作为“下载一份已许可 PDF”的备选；它不是 Cookie 桥，浏览器下载的文件也不会自动进入 `search_content`。
